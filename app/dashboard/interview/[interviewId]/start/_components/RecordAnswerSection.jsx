@@ -20,7 +20,8 @@ function RecordAnswerSection({
   const [userAnswer, setUserAnswer] = useState("");
   const { user } = useUser();
   const [loading, setLoading] = useState(false);
-  const [recordingTimer, setRecordingTimer] = useState(null);
+  const [recordingTimeout, setRecordingTimeout] = useState(null); // Track the timer
+
   const {
     error,
     interimResult,
@@ -35,72 +36,75 @@ function RecordAnswerSection({
   });
 
   useEffect(() => {
+    // Combine results into the user answer
     results?.map((result) =>
       setUserAnswer((prevAns) => prevAns + result?.transcript)
     );
   }, [results]);
 
-  useEffect(() => {
-    if (!isRecording && userAnswer?.length > 10) {
-      UpdateUserAnswer();
-    }
-  }, [userAnswer]);
+  const StartRecording = () => {
+    setUserAnswer(""); // Clear previous answer
+    setResults([]); // Clear previous results
+    startSpeechToText();
 
-  const startRecording = () => {
-    if (!isRecording) {
-      startSpeechToText();
-      setRecordingTimer(
-        setTimeout(() => {
-          stopRecording();
-          toast.error("Recording stopped automatically after 1 minute.");
-        }, 60000)
-      ); // 1-minute limit
-    }
+    // Stop recording after 1 minute
+    const timer = setTimeout(() => {
+      stopSpeechToText();
+      UpdateUserAnswer(); // Save the recording data
+    }, 60000);
+
+    setRecordingTimeout(timer); // Save the timer to clear if needed
   };
 
-  const stopRecording = () => {
-    if (isRecording) {
-      stopSpeechToText();
-      clearTimeout(recordingTimer); // Clear the timer if user stops recording manually
+  const StopRecording = () => {
+    if (recordingTimeout) {
+      clearTimeout(recordingTimeout); // Clear the timer if the user stops manually
+      setRecordingTimeout(null);
     }
+    stopSpeechToText();
+    UpdateUserAnswer(); // Save the recording data
   };
 
   const UpdateUserAnswer = async () => {
+    if (!userAnswer || userAnswer.length < 10) return; // Avoid saving short or empty answers
     console.log(userAnswer);
     setLoading(true);
+
     const feedbackPrompt =
-      "Question:" +
-      mockInterviewQuestion[activeQuestionIndex]?.question +
-      ", User Answer:" +
-      userAnswer +
-      ",Depends on question and user answer for give interview question " +
-      " please give us rating for answer and feedback as area of improvmenet if any " +
-      "in just 3 to 5 lines to improve it in JSON format with rating field and feedback field";
+      `Question: ${mockInterviewQuestion[activeQuestionIndex]?.question}, ` +
+      `User Answer: ${userAnswer}. Based on the question and user answer, please give us a rating for the answer ` +
+      `and feedback as areas of improvement, if any, in JSON format with 'rating' and 'feedback' fields.`;
 
-    const result = await chatSession.sendMessage(feedbackPrompt);
-    const mockJsonResp = result.response
-      .text()
-      .replace("```json", "")
-      .replace("```", "");
-    const JsonFeedbackResp = JSON.parse(mockJsonResp);
-    const resp = await db.insert(UserAnswer).values({
-      mockIdRef: interviewData?.mockId,
-      question: mockInterviewQuestion[activeQuestionIndex]?.question,
-      correctAns: mockInterviewQuestion[activeQuestionIndex]?.answer,
-      userAns: userAnswer,
-      feedback: JsonFeedbackResp?.feedback,
-      rating: JsonFeedbackResp?.rating,
-      userEmail: user?.primaryEmailAddress?.emailAddress,
-      createdAt: moment().format("DD-MM-yyyy"),
-    });
+    try {
+      const result = await chatSession.sendMessage(feedbackPrompt);
+      const mockJsonResp = result.response
+        .text()
+        .replace("```json", "")
+        .replace("```", "");
+      const JsonFeedbackResp = JSON.parse(mockJsonResp);
 
-    if (resp) {
-      toast("User Answer recorded successfully");
-      setUserAnswer("");
-      setResults([]);
+      const resp = await db.insert(UserAnswer).values({
+        mockIdRef: interviewData?.mockId,
+        question: mockInterviewQuestion[activeQuestionIndex]?.question,
+        correctAns: mockInterviewQuestion[activeQuestionIndex]?.answer,
+        userAns: userAnswer,
+        feedback: JsonFeedbackResp?.feedback,
+        rating: JsonFeedbackResp?.rating,
+        userEmail: user?.primaryEmailAddress?.emailAddress,
+        createdAt: moment().format("DD-MM-yyyy"),
+      });
+
+      if (resp) {
+        toast("User Answer recorded successfully");
+        setUserAnswer("");
+        setResults([]);
+      }
+    } catch (error) {
+      console.error("Error updating user answer:", error);
+      toast("Failed to save the answer. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setResults([]);
-    setLoading(false);
   };
 
   return (
@@ -121,11 +125,11 @@ function RecordAnswerSection({
           }}
         />
       </div>
-      <div className="my-10 flex gap-4">
+      <div className="flex gap-4 my-10">
         <Button
           disabled={loading || isRecording}
           variant="outline"
-          onClick={startRecording}
+          onClick={StartRecording}
         >
           <h2 className="text-primary flex gap-2 items-center">
             <Mic /> Start Recording
@@ -134,7 +138,7 @@ function RecordAnswerSection({
         <Button
           disabled={loading || !isRecording}
           variant="outline"
-          onClick={stopRecording}
+          onClick={StopRecording}
         >
           <h2 className="text-red-600 flex gap-2 items-center">
             <StopCircle /> Stop Recording
