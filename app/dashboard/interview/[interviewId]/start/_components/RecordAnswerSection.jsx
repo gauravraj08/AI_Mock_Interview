@@ -31,7 +31,7 @@ function RecordAnswerSection({
     stopSpeechToText,
     setResults,
   } = useSpeechToText({
-    continuous: false,
+    continuous: true,
     useLegacyResults: false,
   });
 
@@ -50,7 +50,9 @@ function RecordAnswerSection({
     // Stop recording after 1 minute
     const timer = setTimeout(() => {
       stopSpeechToText();
-      UpdateUserAnswer(); // Save the recording data
+      if (userAnswer.length > 0) {
+        UpdateUserAnswer();
+      }
     }, 60000);
 
     setRecordingTimeout(timer); // Save the timer to clear if needed
@@ -62,12 +64,14 @@ function RecordAnswerSection({
       setRecordingTimeout(null);
     }
     stopSpeechToText();
-    UpdateUserAnswer(); // Save the recording data
+    if (userAnswer.length > 0) {
+      UpdateUserAnswer();
+    }
   };
 
   const UpdateUserAnswer = async () => {
     if (!userAnswer || userAnswer.length < 10) return; // Avoid saving short or empty answers
-    console.log(userAnswer);
+    // console.log(userAnswer);
     setLoading(true);
 
     const feedbackPrompt =
@@ -119,8 +123,8 @@ function RecordAnswerSection({
         <Webcam
           mirrored={true}
           style={{
-            height: 500,
-            width: 500,
+            height: 300,
+            width: 300,
             zIndex: 10,
           }}
         />
