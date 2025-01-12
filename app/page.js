@@ -42,7 +42,7 @@ export default function Home() {
               </svg>
             </a>
             <a
-              href="https://www.youtube.com/watch?v=mmILNLeoWOE&ab_channel=GauravRaj"
+              href="https://youtu.be/jkRPA-EaYLM"
               className="inline-flex justify-center items-center py-3 px-5 text-base font-medium text-center text-gray-900 rounded-lg border border-gray-300 hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700 dark:focus:ring-gray-800"
             >
               <svg
@@ -62,7 +62,7 @@ export default function Home() {
             </span>
             <div className="flex justify-center items-center mt-8 text-gray-500 ">
               <a
-                href="#"
+                href="https://youtu.be/jkRPA-EaYLM"
                 className="mr-5 mb-5 lg:mb-0 hover:text-gray-800 dark:hover:text-gray-400"
               >
                 <svg
